@@ -110,6 +110,22 @@ export async function listPublicCampaigns(database, now = new Date()) {
         .toArray();
 }
 
+export async function getPublicCampaign(database, campaignId, now = new Date()) {
+    const id = toObjectId(campaignId);
+    const campaign = await database.collection("campaign").findOne(
+        { _id: id, status: "approved", lifecycle: "active", deadline: { $gt: now } },
+        {
+            projection: {
+                title: 1, story: 1, category: 1, fundingGoal: 1, minimumContribution: 1,
+                deadline: 1, rewardInfo: 1, imageUrl: 1, creatorName: 1,
+                status: 1, lifecycle: 1, raisedCredits: 1, createdAt: 1,
+            },
+        },
+    );
+    if (!campaign) throw new CreatorServiceError(404, "Campaign not found.");
+    return campaign;
+}
+
 export async function reviewCampaignModeration(database, actor, campaignId, decision, now = new Date()) {
     if (actor?.role !== "admin") throw new CreatorServiceError(403, "Admin access is required.");
     if (!["approve", "reject"].includes(decision)) throw new CreatorServiceError(400, "Invalid campaign decision.");
