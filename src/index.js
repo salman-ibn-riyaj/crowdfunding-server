@@ -42,6 +42,7 @@ app.use(express.json({ limit: "16kb" }));
 app.use("/api", creatorRouter);
 app.use("/api", supporterRouter);
 app.use("/api", adminRouter);
+app.use("/api", notificationsRouter);
 
 // Image upload endpoint for imgBB
 app.post("/api/upload-image", async (request, response, next) => {
