@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { notifyAsync, NotificationType } from "../notifications/service.js";
 
 export class AdminServiceError extends Error {
     constructor(status, message, details) {
@@ -263,6 +264,20 @@ export async function processWithdrawal(database, client, actor, withdrawalId, n
             },
             { session },
         );
+
+        // Trigger notification to creator
+        const creator = await database.collection("user").findOne(
+            { _id: withdrawal.creatorId },
+            { projection: { email: 1 } },
+        );
+        if (creator?.email) {
+            notifyAsync(database, NotificationType.WITHDRAWAL_PROCESSED, {
+                withdrawalCredits: withdrawal.withdrawalCredits,
+                withdrawalAmountCents: withdrawal.withdrawalAmountCents,
+                paymentSystem: withdrawal.paymentSystem,
+                creatorEmail: creator.email,
+            });
+        }
 
         return { ...withdrawal, status: "approved", processedAt: now };
     });

@@ -54,13 +54,35 @@ export async function getSupporterSummary(database, actor) {
 
 /**
  * Returns all contributions made by this supporter with latest-first ordering.
+ * Supports pagination with page and limit parameters.
  */
-export async function listSupporterContributions(database, actor) {
+export async function listSupporterContributions(database, actor, page = 1, limit = 10) {
     const ownerId = supporterId(actor);
-    return database.collection("contribution")
-        .find({ supporterId: ownerId })
-        .sort({ createdAt: -1 })
-        .toArray();
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, Number(limit) || 10));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [contributions, total] = await Promise.all([
+        database.collection("contribution")
+            .find({ supporterId: ownerId })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limitNum)
+            .toArray(),
+        database.collection("contribution").countDocuments({ supporterId: ownerId }),
+    ]);
+
+    return {
+        contributions,
+        pagination: {
+            page: pageNum,
+            limit: limitNum,
+            total,
+            totalPages: Math.ceil(total / limitNum),
+            hasNext: pageNum * limitNum < total,
+            hasPrev: pageNum > 1,
+        },
+    };
 }
 
 /**

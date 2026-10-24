@@ -1,4 +1,6 @@
 import { ObjectId } from "mongodb";
+import { getDatabase } from "../database.js";
+import { notifyAsync, NotificationType } from "../notifications/service.js";
 import {
     creditsToCents,
     validateCampaignCreateInput,
@@ -136,6 +138,17 @@ export async function reviewCampaignModeration(database, actor, campaignId, deci
         { $set: { status, reviewedAt: now, updatedAt: now } },
     );
     if (result.modifiedCount !== 1) throw new CreatorServiceError(409, "Campaign is not pending review.");
+
+    // Trigger notification to creator
+    const campaign = await database.collection("campaign").findOne({ _id: id });
+    if (campaign?.creatorEmail) {
+        const notificationType = decision === "approve" ? NotificationType.CAMPAIGN_APPROVED : NotificationType.CAMPAIGN_REJECTED;
+        notifyAsync(database, notificationType, {
+            campaignTitle: campaign.title,
+            creatorEmail: campaign.creatorEmail,
+        });
+    }
+
     return { status, reviewedAt: now };
 }
 
@@ -338,6 +351,21 @@ export async function createContribution(database, client, actor, input, now = n
             updatedAt: now,
         };
         const inserted = await database.collection("contribution").insertOne(contribution, { session });
+
+        // Trigger notification to creator
+        const creator = await database.collection("user").findOne(
+            { _id: campaign.creatorId },
+            { projection: { email: 1 } },
+        );
+        if (creator?.email) {
+            notifyAsync(database, NotificationType.CONTRIBUTION_CREATED, {
+                supporterName: actor.name,
+                amountCredits,
+                campaignTitle: campaign.title,
+                creatorEmail: creator.email,
+            });
+        }
+
         return { ...contribution, _id: inserted.insertedId };
     });
 }
@@ -393,6 +421,21 @@ export async function reviewContribution(database, client, actor, contributionId
                 { $inc: { credits: contribution.amountCredits } },
                 { session },
             );
+        }
+
+        // Trigger notification to supporter
+        const supporter = await database.collection("user").findOne(
+            { _id: contribution.supporterId },
+            { projection: { email: 1 } },
+        );
+        if (supporter?.email) {
+            const notificationType = decision === "approve" ? NotificationType.CONTRIBUTION_APPROVED : NotificationType.CONTRIBUTION_REJECTED;
+            notifyAsync(database, notificationType, {
+                amountCredits: contribution.amountCredits,
+                campaignTitle: contribution.campaignTitle,
+                creatorName: actor.name,
+                supporterEmail: supporter.email,
+            });
         }
 
         return { ...contribution, status: nextStatus, reviewedAt: now };

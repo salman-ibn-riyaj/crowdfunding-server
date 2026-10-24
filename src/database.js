@@ -6,26 +6,26 @@ const database = client.db(config.mongoDbName);
 let connectionPromise;
 
 export function getMongoClient() {
-  return client;
+    return client;
 }
 
 export function getDatabase() {
-  return database;
+    return database;
 }
 
 export async function connectToDatabase() {
-  connectionPromise ??= client.connect().then(async () => {
-    await database.command({ ping: 1 });
-    return database;
-  }).catch((error) => {
-    connectionPromise = undefined;
-    throw error;
-  });
+    connectionPromise ??= client.connect().then(async () => {
+        await database.command({ ping: 1 });
+        return database;
+    }).catch((error) => {
+        connectionPromise = undefined;
+        throw error;
+    });
 
-  return connectionPromise;
+    return connectionPromise;
 }
 
 export async function closeDatabase() {
-  connectionPromise = undefined;
-  await client.close();
+    connectionPromise = undefined;
+    await client.close();
 }

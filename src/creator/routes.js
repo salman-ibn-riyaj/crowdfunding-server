@@ -1,8 +1,7 @@
 import express from "express";
-import { fromNodeHeaders } from "better-auth/node";
-import { auth } from "../auth.js";
 import { config } from "../config.js";
 import { getDatabase, getMongoClient } from "../database.js";
+import { requireRole, requireCreator } from "../middleware/authorization.js";
 import {
     archiveOrDeleteCampaign,
     createCampaign,
@@ -39,15 +38,6 @@ function endpoint(handler, { mutating = false } = {}) {
     };
 }
 
-async function requireUser(request, expectedRole) {
-    const session = await auth.api.getSession({ headers: fromNodeHeaders(request.headers) });
-    if (!session) throw new CreatorServiceError(401, "Sign in to continue.");
-    if (expectedRole && session.user.role !== expectedRole) {
-        throw new CreatorServiceError(403, `${expectedRole[0].toUpperCase()}${expectedRole.slice(1)} access is required.`);
-    }
-    return session.user;
-}
-
 router.get("/campaigns", endpoint(async (_request, response) => {
     response.json({ campaigns: await listPublicCampaigns(getDatabase()) });
 }));
@@ -58,7 +48,7 @@ router.get("/campaigns/:campaignId", endpoint(async (request, response) => {
 }));
 
 router.post("/campaigns/:campaignId/contributions", endpoint(async (request, response) => {
-    const user = await requireUser(request, "supporter");
+    const user = await requireRole(request, "supporter");
     const contribution = await createContribution(
         getDatabase(),
         getMongoClient(),
@@ -69,29 +59,29 @@ router.post("/campaigns/:campaignId/contributions", endpoint(async (request, res
 }, { mutating: true }));
 
 router.get("/creator/summary", endpoint(async (request, response) => {
-    const user = await requireUser(request, "creator");
+    const user = await requireCreator(request);
     response.json({ summary: await getCreatorSummary(getDatabase(), user) });
 }));
 
 router.get("/creator/campaigns", endpoint(async (request, response) => {
-    const user = await requireUser(request, "creator");
+    const user = await requireCreator(request);
     response.json({ campaigns: await listCreatorCampaigns(getDatabase(), user) });
 }));
 
 router.post("/creator/campaigns", endpoint(async (request, response) => {
-    const user = await requireUser(request, "creator");
+    const user = await requireCreator(request);
     const campaign = await createCampaign(getDatabase(), user, request.body);
     response.status(201).json({ campaign });
 }, { mutating: true }));
 
 router.patch("/creator/campaigns/:campaignId", endpoint(async (request, response) => {
-    const user = await requireUser(request, "creator");
+    const user = await requireCreator(request);
     const campaign = await updateCampaign(getDatabase(), user, request.params.campaignId, request.body);
     response.json({ campaign });
 }, { mutating: true }));
 
 router.delete("/creator/campaigns/:campaignId", endpoint(async (request, response) => {
-    const user = await requireUser(request, "creator");
+    const user = await requireCreator(request);
     const result = await archiveOrDeleteCampaign(
         getDatabase(),
         getMongoClient(),
@@ -102,12 +92,12 @@ router.delete("/creator/campaigns/:campaignId", endpoint(async (request, respons
 }, { mutating: true }));
 
 router.get("/creator/contributions/pending", endpoint(async (request, response) => {
-    const user = await requireUser(request, "creator");
+    const user = await requireCreator(request);
     response.json({ contributions: await listPendingContributions(getDatabase(), user) });
 }));
 
 router.post("/creator/contributions/:contributionId/approve", endpoint(async (request, response) => {
-    const user = await requireUser(request, "creator");
+    const user = await requireCreator(request);
     const contribution = await reviewContribution(
         getDatabase(),
         getMongoClient(),
@@ -119,7 +109,7 @@ router.post("/creator/contributions/:contributionId/approve", endpoint(async (re
 }, { mutating: true }));
 
 router.post("/creator/contributions/:contributionId/reject", endpoint(async (request, response) => {
-    const user = await requireUser(request, "creator");
+    const user = await requireCreator(request);
     const contribution = await reviewContribution(
         getDatabase(),
         getMongoClient(),
@@ -131,7 +121,7 @@ router.post("/creator/contributions/:contributionId/reject", endpoint(async (req
 }, { mutating: true }));
 
 router.post("/creator/withdrawals", endpoint(async (request, response) => {
-    const user = await requireUser(request, "creator");
+    const user = await requireCreator(request);
     const withdrawal = await createWithdrawalRequest(
         getDatabase(),
         getMongoClient(),
@@ -143,7 +133,7 @@ router.post("/creator/withdrawals", endpoint(async (request, response) => {
 }, { mutating: true }));
 
 router.get("/creator/withdrawals", endpoint(async (request, response) => {
-    const user = await requireUser(request, "creator");
+    const user = await requireCreator(request);
     response.json({ withdrawals: await listCreatorWithdrawals(getDatabase(), user) });
 }));
 

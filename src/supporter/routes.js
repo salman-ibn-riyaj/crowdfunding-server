@@ -1,8 +1,7 @@
 import express from "express";
-import { fromNodeHeaders } from "better-auth/node";
-import { auth } from "../auth.js";
 import { config } from "../config.js";
 import { getDatabase } from "../database.js";
+import { requireSupporter } from "../middleware/authorization.js";
 import {
     createCreditPurchase,
     getSupporterSummary,
@@ -31,15 +30,6 @@ function endpoint(handler, { mutating = false } = {}) {
     };
 }
 
-async function requireSupporter(request) {
-    const session = await auth.api.getSession({ headers: fromNodeHeaders(request.headers) });
-    if (!session) throw new SupporterServiceError(401, "Sign in to continue.");
-    if (session.user.role !== "supporter") {
-        throw new SupporterServiceError(403, "Supporter access is required.");
-    }
-    return session.user;
-}
-
 // GET /api/supporter/summary — home stats
 router.get("/supporter/summary", endpoint(async (request, response) => {
     const user = await requireSupporter(request);
@@ -49,7 +39,9 @@ router.get("/supporter/summary", endpoint(async (request, response) => {
 // GET /api/supporter/contributions — all contributions by this supporter
 router.get("/supporter/contributions", endpoint(async (request, response) => {
     const user = await requireSupporter(request);
-    response.json({ contributions: await listSupporterContributions(getDatabase(), user) });
+    const page = Number(request.query.page) || 1;
+    const limit = Number(request.query.limit) || 10;
+    response.json(await listSupporterContributions(getDatabase(), user, page, limit));
 }));
 
 // GET /api/supporter/contributions/approved — approved contributions only

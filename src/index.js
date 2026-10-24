@@ -12,6 +12,8 @@ import {
 import { creatorRouter } from "./creator/routes.js";
 import { supporterRouter } from "./supporter/routes.js";
 import { adminRouter } from "./admin/routes.js";
+import { notificationsRouter } from "./notifications/routes.js";
+import { uploadToImgBB } from "./utils/image-upload.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -40,6 +42,25 @@ app.use(express.json({ limit: "16kb" }));
 app.use("/api", creatorRouter);
 app.use("/api", supporterRouter);
 app.use("/api", adminRouter);
+
+// Image upload endpoint for imgBB
+app.post("/api/upload-image", async (request, response, next) => {
+    try {
+        if (request.get("origin") !== config.clientOrigin) {
+            return response.status(403).json({ message: "This origin is not allowed." });
+        }
+
+        const { image } = request.body;
+        if (!image || typeof image !== "string") {
+            return response.status(400).json({ message: "Image data is required." });
+        }
+
+        const result = await uploadToImgBB(image);
+        response.json(result);
+    } catch (error) {
+        next(error);
+    }
+});
 
 app.post("/api/account/onboard", async (request, response, next) => {
     try {

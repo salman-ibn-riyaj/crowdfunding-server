@@ -1,8 +1,7 @@
 import express from "express";
-import { fromNodeHeaders } from "better-auth/node";
-import { auth } from "../auth.js";
 import { config } from "../config.js";
 import { getDatabase, getMongoClient } from "../database.js";
+import { requireAdmin, requireAuth } from "../middleware/authorization.js";
 import {
     AdminServiceError,
     adminDeleteCampaign,
@@ -38,19 +37,6 @@ function endpoint(handler, { mutating = false } = {}) {
             next(error);
         }
     };
-}
-
-async function requireAdmin(request) {
-    const session = await auth.api.getSession({ headers: fromNodeHeaders(request.headers) });
-    if (!session) throw new AdminServiceError(401, "Sign in to continue.");
-    if (session.user.role !== "admin") throw new AdminServiceError(403, "Admin access is required.");
-    return session.user;
-}
-
-async function requireAuth(request) {
-    const session = await auth.api.getSession({ headers: fromNodeHeaders(request.headers) });
-    if (!session) throw new AdminServiceError(401, "Sign in to continue.");
-    return session.user;
 }
 
 // ── Home stats ──────────────────────────────────────────────────
