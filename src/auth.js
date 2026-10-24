@@ -66,4 +66,11 @@ export const auth = betterAuth({
     advanced: {
         useSecureCookies: config.isProduction,
     },
+    trustedOrigins: [config.clientOrigin],
+    advanced: {
+        defaultCookieAttributes: {
+            sameSite: "none",
+            secure: true,
+        },
+    },
 });
