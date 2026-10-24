@@ -147,15 +147,4 @@ router.get("/creator/withdrawals", endpoint(async (request, response) => {
     response.json({ withdrawals: await listCreatorWithdrawals(getDatabase(), user) });
 }));
 
-router.post("/admin/campaigns/:campaignId/review", endpoint(async (request, response) => {
-    const user = await requireUser(request, "admin");
-    const result = await reviewCampaignModeration(
-        getDatabase(),
-        user,
-        request.params.campaignId,
-        request.body?.decision,
-    );
-    response.json(result);
-}, { mutating: true }));
-
 export { router as creatorRouter };

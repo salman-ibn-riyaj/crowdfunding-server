@@ -11,6 +11,7 @@ import {
 } from "./account/registration.js";
 import { creatorRouter } from "./creator/routes.js";
 import { supporterRouter } from "./supporter/routes.js";
+import { adminRouter } from "./admin/routes.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -38,6 +39,7 @@ app.all("/api/auth/{*splat}", toNodeHandler(auth));
 app.use(express.json({ limit: "16kb" }));
 app.use("/api", creatorRouter);
 app.use("/api", supporterRouter);
+app.use("/api", adminRouter);
 
 app.post("/api/account/onboard", async (request, response, next) => {
     try {
