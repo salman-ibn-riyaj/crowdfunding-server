@@ -20,6 +20,12 @@ export const auth = betterAuth({
     basePath: "/api/auth",
     secret: config.authSecret,
     trustedOrigins: [config.clientOrigin],
+    advanced: {
+        defaultCookieAttributes: {
+            sameSite: "none",
+            secure: true,
+        },
+    },
     database: mongodbAdapter(getDatabase(), { client: getMongoClient(), transaction: true }),
     emailAndPassword: {
         enabled: true,
@@ -66,11 +72,5 @@ export const auth = betterAuth({
     advanced: {
         useSecureCookies: config.isProduction,
     },
-    trustedOrigins: [config.clientOrigin],
-    advanced: {
-        defaultCookieAttributes: {
-            sameSite: "none",
-            secure: true,
-        },
-    },
+
 });
